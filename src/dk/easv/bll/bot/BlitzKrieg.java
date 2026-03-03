@@ -8,7 +8,7 @@ public class BlitzKrieg implements IBot {
     static private String[][][] allStates;
     private final int totalSize = (int) Math.pow(3, 9);
 
-    public static void main(String[] args) {
+   /* public static void main(String[] args) {
         BlitzKrieg blitz = new BlitzKrieg();
         for (int i = 0; i < 100; i++) {
             printBoard(allStates[i]);
@@ -20,7 +20,7 @@ public class BlitzKrieg implements IBot {
             System.out.println(tt[0] + tt[1] + tt[2]);
         }
         System.out.println("-----");
-    }
+    }*/
 
     public BlitzKrieg() {
         allStates = new String[totalSize][3][3];
@@ -29,8 +29,16 @@ public class BlitzKrieg implements IBot {
 
     @Override
     public IMove doMove(IGameState state) {
-
         return null;
+
+    }
+
+    public void minValue(){
+
+    }
+
+    public void maxValue(){
+
     }
 
     //Generates all board states
