@@ -30,7 +30,7 @@ import java.util.UUID;
 public class TeacherBotRESTv2 implements IBot {
 
     private static final String SERVER_URL = "http://10.176.88.89:4567";
-    private static final String DEFAULT_SLUG = "r19bitreuse";
+    private static final String DEFAULT_SLUG = "teacher";
 
     private final String sessionId = UUID.randomUUID().toString();
     private final Gson gson = new Gson();

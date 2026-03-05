@@ -1,72 +1,70 @@
 package dk.easv.bll.bot;
 
+import dk.easv.bll.bot.IBot;
 import dk.easv.bll.field.IField;
 import dk.easv.bll.game.IGameState;
 import dk.easv.bll.move.IMove;
 
 import java.util.List;
+
 /* Dev Curse:
 May this bot always have lower latency,
 smarter logic, and fewer bugs than its enemies.
 Any opposing bot shall encounter random errors,
 unexpected nulls, and eternal debugging.
 */
+
 public class PrototypeKrieg implements IBot {
     static final String BOTNAME = "ProtoKrieg";
 
     static private String[][][] allStates;
-    static private int[] stateScores;
+    static private int[]        stateScores;
 
     private final int totalSize = (int) Math.pow(3, 9);
 
     private static final String[] VALUES = {" - ", " X ", " O "};
-    private static final String BOT      = "0";
-    private static final String OPPONENT = "1";
+
+    private String BOT      = "0";
+    private String OPPONENT = "1";
 
     // Thrown to abort minimax when the deadline is exceeded
     private static class TimeoutException extends RuntimeException {
         TimeoutException() { super(null, null, true, false); }
     }
 
-    public PrototypeKrieg() {
-        allStates   = new String[totalSize][3][3];
-        stateScores = new int[totalSize];
-        generateAllStates();
-        precomputeStateScores();
-    }
 
-    // -------------------------------------------------------------------------
-    // Public interface
-    // -------------------------------------------------------------------------
-
+    //Makes the move and makes sure we aren't playing against ourselves
     @Override
     public IMove doMove(IGameState state) {
+
+        if (state.getMoveNumber() % 2 == 0) {
+            BOT      = "0";
+            OPPONENT = "1";
+        } else {
+            BOT      = "1";
+            OPPONENT = "0";
+        }
+
         List<IMove> moves = state.getField().getAvailableMoves();
         if (moves.isEmpty()) return null;
 
-        // Detect free-choice turn: every non-won microboard is available
         boolean freeChoice = isFreeChoiceTurn(state);
 
         if (freeChoice) {
-            // Use iterative deepening with a hard 200 ms wall-clock limit
             return doMoveTimeLimited(state, moves, 200L);
         } else {
-            // Normal turn – fixed depth search as before
             return doMoveFixedDepth(state, moves, Math.min(6, moves.size()));
         }
     }
 
-    /**
-     * Iterative-deepening search that stops as soon as the deadline is reached.
-     * Always returns the best complete result from the last fully-searched depth.
-     */
+    //Does move if there is no more time
     private IMove doMoveTimeLimited(IGameState state, List<IMove> moves, long timeLimitMs) {
         long deadline = System.currentTimeMillis() + timeLimitMs;
 
         IMove bestMove  = moves.get(0);
         int   bestValue = Integer.MIN_VALUE;
 
-        // Seed with a fast depth-1 result so we always have something valid
+
         for (IMove move : moves) {
             makeMove(state, move, true);
             int value = evaluate(state);
@@ -77,7 +75,6 @@ public class PrototypeKrieg implements IBot {
             }
         }
 
-        // Iterative deepening: keep going deeper until time runs out
         for (int depth = 2; depth <= 9; depth++) {
             IMove  candidateBest  = bestMove;
             int    candidateValue = Integer.MIN_VALUE;
@@ -103,18 +100,16 @@ public class PrototypeKrieg implements IBot {
             }
 
             if (completedDepth) {
-                // Full depth was searched – commit this result
                 bestMove  = candidateBest;
                 bestValue = candidateValue;
             }
-            // Whether or not we finished, stop if time is up
             if (System.currentTimeMillis() >= deadline) break;
         }
 
         return bestMove;
     }
 
-    /** Original fixed-depth search used for constrained turns. */
+    //Uses fixed depth search whenever there is no time left
     private IMove doMoveFixedDepth(IGameState state, List<IMove> moves, int depth) {
         IMove bestMove  = moves.get(0);
         int   bestValue = Integer.MIN_VALUE;
@@ -133,10 +128,7 @@ public class PrototypeKrieg implements IBot {
         return bestMove;
     }
 
-    /**
-     * Returns true when it is a "free choice" turn, i.e. every microboard that
-     * has not been won/drawn is marked as available (the bot may play anywhere).
-     */
+    //Checks if this turn the bot can freely choose
     private boolean isFreeChoiceTurn(IGameState state) {
         String[][] macro = state.getField().getMacroboard();
         int availableCount = 0;
@@ -148,14 +140,11 @@ public class PrototypeKrieg implements IBot {
                 if (cell.equals(IField.EMPTY_FIELD) || cell.equals(IField.AVAILABLE_FIELD)) openCount++;
             }
         }
-        // Free choice: every open microboard is currently available
         return openCount > 0 && availableCount == openCount;
     }
 
-    // -------------------------------------------------------------------------
-    // Minimax with alpha-beta pruning + optional deadline
-    // -------------------------------------------------------------------------
 
+    //Mini max with a deadline
     private int minimax(IGameState state, int depth, boolean isMax,
                         int alpha, int beta, long deadline) {
 
@@ -191,10 +180,7 @@ public class PrototypeKrieg implements IBot {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Evaluation using pre-computed state table
-    // -------------------------------------------------------------------------
-
+    //Evaluates what moves are best to take, consistent with wether it goes first or second
     private int evaluate(IGameState state) {
         String[][] macro = state.getField().getMacroboard();
         String[][] board = state.getField().getBoard();
@@ -205,7 +191,9 @@ public class PrototypeKrieg implements IBot {
         int totalScore = 0;
 
         int macroIndex = encodeMacroboard(macro);
-        totalScore += stateScores[macroIndex] * 50;
+
+        int macroScore = stateScores[macroIndex] * 50;
+        totalScore += BOT.equals("0") ? macroScore : -macroScore;
 
         for (int mi = 0; mi < 3; mi++) {
             for (int mj = 0; mj < 3; mj++) {
@@ -216,7 +204,8 @@ public class PrototypeKrieg implements IBot {
                     totalScore -= 1_000 * positionWeight(mi, mj);
                 } else {
                     int idx = encodeMicroboard(board, mi, mj);
-                    totalScore += stateScores[idx] * positionWeight(mi, mj);
+                    int microScore = stateScores[idx] * positionWeight(mi, mj);
+                    totalScore += BOT.equals("0") ? microScore : -microScore;
                 }
             }
         }
@@ -224,10 +213,8 @@ public class PrototypeKrieg implements IBot {
         return totalScore;
     }
 
-    // -------------------------------------------------------------------------
-    // State table helpers
-    // -------------------------------------------------------------------------
 
+    //Creates the big boards
     private int encodeMicroboard(String[][] board, int mi, int mj) {
         int startX = mi * 3;
         int startY = mj * 3;
@@ -244,6 +231,7 @@ public class PrototypeKrieg implements IBot {
         return index;
     }
 
+    //crates the simulated macroboard
     private int encodeMacroboard(String[][] macro) {
         int index = 0;
         int base  = 1;
@@ -252,21 +240,23 @@ public class PrototypeKrieg implements IBot {
             int col  = j % 3;
             String cell = macro[row][col];
             int digit;
-            if      (cell.equals(BOT))      digit = 1;
-            else if (cell.equals(OPPONENT)) digit = 2;
-            else                            digit = 0;
+            if      (cell.equals("0")) digit = 1;
+            else if (cell.equals("1")) digit = 2;
+            else                       digit = 0;
             index += digit * base;
             base  *= 3;
         }
         return index;
     }
 
+    //Tells us what cells taken into digits
     private int cellToDigit(String cell) {
-        if (cell.equals(BOT))      return 1;
-        if (cell.equals(OPPONENT)) return 2;
+        if (cell.equals("0")) return 1;
+        if (cell.equals("1")) return 2;
         return 0;
     }
 
+    //Calculates the state scores before a move
     private void precomputeStateScores() {
         int[][] lines = {
                 {0,1,2},{3,4,5},{6,7,8},
@@ -299,6 +289,7 @@ public class PrototypeKrieg implements IBot {
         }
     }
 
+    //Returns values based on if there is a winning line for either player
     private int scoreLineAllStates(String a, String b, String c) {
         int xCount = 0, oCount = 0;
         for (String v : new String[]{a, b, c}) {
@@ -312,16 +303,14 @@ public class PrototypeKrieg implements IBot {
         return 0;
     }
 
+    //Gives values to the choices it can make on the board
     private int positionWeight(int row, int col) {
         if (row == 1 && col == 1) return 3;
         if (row % 2 == 0 && col % 2 == 0) return 2;
         return 1;
     }
 
-    // -------------------------------------------------------------------------
-    // Move application / undo
-    // -------------------------------------------------------------------------
-
+    //Makes a move on a simualted board to check if it is the optimal one
     private void makeMove(IGameState state, IMove move, boolean isBot) {
         String player = isBot ? BOT : OPPONENT;
         int x = move.getX();
@@ -358,6 +347,7 @@ public class PrototypeKrieg implements IBot {
         state.setMoveNumber(state.getMoveNumber() + 1);
     }
 
+    //Undoes bad moves in a simulated board
     private void undoMove(IGameState state, IMove move) {
         String[][] board = state.getField().getBoard();
         String[][] macro = state.getField().getMacroboard();
@@ -392,15 +382,13 @@ public class PrototypeKrieg implements IBot {
         state.setMoveNumber(state.getMoveNumber() - 1);
     }
 
-    // -------------------------------------------------------------------------
-    // Win / terminal checks
-    // -------------------------------------------------------------------------
-
+    //reutrns if there is a winning line
     private boolean isTerminal(IGameState state) {
         String[][] macro = state.getField().getMacroboard();
         return checkWin(macro, BOT) || checkWin(macro, OPPONENT) || state.getField().isFull();
     }
 
+    //Checks for macroboard wins
     private boolean checkWin(String[][] board, String player) {
         for (int i = 0; i < 3; i++) {
             if (board[i][0].equals(player) && board[i][1].equals(player) && board[i][2].equals(player)) return true;
@@ -411,6 +399,7 @@ public class PrototypeKrieg implements IBot {
         return false;
     }
 
+    //Checks for big board wins
     private boolean checkMicroWin(String[][] board, int microX, int microY, String player) {
         int sx = microX * 3, sy = microY * 3;
         for (int i = 0; i < 3; i++) {
@@ -422,10 +411,7 @@ public class PrototypeKrieg implements IBot {
         return false;
     }
 
-    // -------------------------------------------------------------------------
-    // State generation
-    // -------------------------------------------------------------------------
-
+    //Generates every state a board can be in
     public void generateAllStates() {
         for (int i = 0; i < totalSize; i++) {
             int num = i;
@@ -446,5 +432,3 @@ public class PrototypeKrieg implements IBot {
         return BOTNAME;
     }
 }
-
-
