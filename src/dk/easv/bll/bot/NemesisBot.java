@@ -67,7 +67,7 @@ import dk.easv.bll.move.Move;
 public class NemesisBot implements IBot {
 
     private static final String BOT_NAME = "NemesisBot";
-    private static final long   TIME_MS  = 10;   // 55 ms safety margin
+    private static final long   TIME_MS  = 945;   // 55 ms safety margin
     private static final double UCB_C    = 1.1;
     private static final int    RAVE_K   = 250;   // β = K/(K+visits)
     private static final int    POOL_SZ  = 40_000;   // 81 children/node: 3*40k*81*4 = ~39MB
