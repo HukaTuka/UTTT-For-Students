@@ -70,7 +70,7 @@ public class NemesisBot implements IBot {
     private static final long   TIME_MS  = 945;   // 55 ms safety margin
     private static final double UCB_C    = 1.1;
     private static final int    RAVE_K   = 250;   // β = K/(K+visits)
-    private static final int    POOL_SZ  = 200_000;
+    private static final int    POOL_SZ  = 40_000;   // 81 children/node: 3*40k*81*4 = ~39MB
 
     // 8 winning line masks for a 3×3 board (bit = row*3+col)
     static final int[] WM = {
@@ -92,10 +92,10 @@ public class NemesisBot implements IBot {
     private final int[]   nScore2   = new int  [POOL_SZ];   // 2*wins + draws
     private final int[]   nChildCnt = new int  [POOL_SZ];
     // 9 children max; child[n*9+i] = pool index of i-th child
-    private final int[]   nChild    = new int  [POOL_SZ * 9];
+    private final int[]   nChild    = new int  [POOL_SZ * 81];
     // RAVE per child slot: nRV[n*9+i], nRS[n*9+i]
-    private final int[]   nRV       = new int  [POOL_SZ * 9];
-    private final int[]   nRS       = new int  [POOL_SZ * 9];
+    private final int[]   nRV       = new int  [POOL_SZ * 81];
+    private final int[]   nRS       = new int  [POOL_SZ * 81];
     private final boolean[] nExp    = new boolean[POOL_SZ];
 
     private int poolTop = 0;
@@ -128,16 +128,8 @@ public class NemesisBot implements IBot {
         nChildCnt[n] = 0;
         nExp     [n] = false;
         // Clear RAVE slots for this node's 9 child positions
-        int base = n * 9;
-        nChild[base]=0; nChild[base+1]=0; nChild[base+2]=0;
-        nChild[base+3]=0; nChild[base+4]=0; nChild[base+5]=0;
-        nChild[base+6]=0; nChild[base+7]=0; nChild[base+8]=0;
-        nRV[base]=0; nRV[base+1]=0; nRV[base+2]=0;
-        nRV[base+3]=0; nRV[base+4]=0; nRV[base+5]=0;
-        nRV[base+6]=0; nRV[base+7]=0; nRV[base+8]=0;
-        nRS[base]=0; nRS[base+1]=0; nRS[base+2]=0;
-        nRS[base+3]=0; nRS[base+4]=0; nRS[base+5]=0;
-        nRS[base+6]=0; nRS[base+7]=0; nRS[base+8]=0;
+        int base = n * 81;
+        for (int _i = 0; _i < 81; _i++) { nChild[base+_i] = 0; nRV[base+_i] = 0; nRS[base+_i] = 0; }
         return n;
     }
 
@@ -173,12 +165,12 @@ public class NemesisBot implements IBot {
         int bestIdx = -1, bestV = -1;
         int cnt = nChildCnt[root];
         for (int i = 0; i < cnt; i++) {
-            int ci = nChild[root * 9 + i];
+            int ci = nChild[root * 81 + i];
             if (nVisits[ci] > bestV) { bestV = nVisits[ci]; bestIdx = i; }
         }
         if (bestIdx < 0) return toMove(b.moveBuf[0]);  // fallback: first legal move
 
-        int chosen = nChild[root * 9 + bestIdx];
+        int chosen = nChild[root * 81 + bestIdx];
         reuseNode = chosen;
         b.snapshotTo(snapBoard);
         return toMove(nEnc[chosen]);
@@ -214,7 +206,7 @@ public class NemesisBot implements IBot {
             if (diffs == 1 && oppEnc >= 0) {
                 // Try to find matching child
                 int cnt = nChildCnt[reuseNode];
-                int base = reuseNode * 9;
+                int base = reuseNode * 81;
                 for (int i = 0; i < cnt; i++) {
                     int ci = nChild[base + i];
                     if (nEnc[ci] == oppEnc) { reuseNode = -1; return ci; }
@@ -244,7 +236,7 @@ public class NemesisBot implements IBot {
         while (nExp[node] && nChildCnt[node] > 0 && !b.isTerminal()) {
             int si = ucbSelect(node);
             if (si < 0) break;
-            int ci = nChild[node * 9 + si];
+            int ci = nChild[node * 81 + si];
             b.apply(nEnc[ci], curPlayer);
             selNode[selLen] = node;
             selEnc [selLen] = nEnc[ci];
@@ -257,7 +249,7 @@ public class NemesisBot implements IBot {
         if (!b.isTerminal() && !nExp[node]) {
             expand(node, b, curPlayer);
             if (nChildCnt[node] > 0) {
-                int ci = nChild[node * 9];  // heuristic-best child
+                int ci = nChild[node * 81];  // heuristic-best child
                 b.apply(nEnc[ci], curPlayer);
                 selNode[selLen] = node;
                 selEnc [selLen] = nEnc[ci];
@@ -302,7 +294,7 @@ public class NemesisBot implements IBot {
             int s2 = (moverD == me) ? score2 : (2 - score2);
 
             // Find child index for sEnc
-            int pBase = pNode * 9;
+            int pBase = pNode * 81;
             int cnt   = nChildCnt[pNode];
             int ci    = -1;
             int ci_i  = -1;
@@ -342,7 +334,7 @@ public class NemesisBot implements IBot {
         double bestVal = Double.NEGATIVE_INFINITY;
         double logN = Math.log(Math.max(1, nVisits[node]));
         int cnt  = nChildCnt[node];
-        int base = node * 9;
+        int base = node * 81;
         for (int i = 0; i < cnt; i++) {
             int ci = nChild[base + i];
             if (nVisits[ci] == 0) return i;
@@ -373,7 +365,7 @@ public class NemesisBot implements IBot {
             }
             b.moveBuf[j+1] = m; hBuf[j+1] = s;
         }
-        int base = node * 9;
+        int base = node * 81;
         for (int i = 0; i < n; i++) {
             int ci = alloc(b.moveBuf[i], player);
             nChild[base + i] = ci;
