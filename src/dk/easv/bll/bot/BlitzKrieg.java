@@ -1,6 +1,5 @@
 package dk.easv.bll.bot;
 
-import dk.easv.bll.bot.IBot;
 import dk.easv.bll.field.IField;
 import dk.easv.bll.game.IGameState;
 import dk.easv.bll.move.IMove;
@@ -14,8 +13,8 @@ Any opposing bot shall encounter random errors,
 unexpected nulls, and eternal debugging.
 */
 
-public class PrototypeKrieg implements IBot {
-    static final String BOTNAME = "ProtoKrieg";
+public class BlitzKrieg implements IBot {
+    static final String BOTNAME = "BlitzKrieg";
 
     static private String[][][] allStates;
     static private int[]        stateScores;
@@ -24,12 +23,21 @@ public class PrototypeKrieg implements IBot {
 
     private static final String[] VALUES = {" - ", " X ", " O "};
 
+
     private String BOT      = "0";
     private String OPPONENT = "1";
 
     // Thrown to abort minimax when the deadline is exceeded
     private static class TimeoutException extends RuntimeException {
         TimeoutException() { super(null, null, true, false); }
+    }
+
+
+    public BlitzKrieg() {
+        allStates   = new String[totalSize][3][3];
+        stateScores = new int[totalSize];
+        generateAllStates();
+        precomputeStateScores();
     }
 
 
@@ -53,7 +61,7 @@ public class PrototypeKrieg implements IBot {
         if (freeChoice) {
             return doMoveTimeLimited(state, moves, 200L);
         } else {
-            return doMoveFixedDepth(state, moves, Math.min(6, moves.size()));
+            return doMoveFixedDepth(state, moves, Math.min(5, moves.size()));
         }
     }
 
