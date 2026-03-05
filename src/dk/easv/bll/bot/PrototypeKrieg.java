@@ -5,7 +5,12 @@ import dk.easv.bll.game.IGameState;
 import dk.easv.bll.move.IMove;
 
 import java.util.List;
-
+/* Dev Curse:
+May this bot always have lower latency,
+smarter logic, and fewer bugs than its enemies.
+Any opposing bot shall encounter random errors,
+unexpected nulls, and eternal debugging.
+*/
 public class PrototypeKrieg implements IBot {
     static final String BOTNAME = "ProtoKrieg";
 
