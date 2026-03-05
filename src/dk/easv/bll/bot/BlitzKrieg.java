@@ -11,19 +11,6 @@ public class BlitzKrieg implements IBot {
     static private String[][][] allStates;
     private final int totalSize = (int) Math.pow(3, 9);
 
-   /* public static void main(String[] args) {
-        BlitzKrieg blitz = new BlitzKrieg();
-        for (int i = 0; i < 100; i++) {
-            printBoard(allStates[i]);
-        }
-    }
-
-    private static void printBoard(String[][] board){
-        for (String[] tt: board) {
-            System.out.println(tt[0] + tt[1] + tt[2]);
-        }
-        System.out.println("-----");
-    }*/
 
     public BlitzKrieg() {
         allStates = new String[totalSize][3][3];
@@ -35,6 +22,46 @@ public class BlitzKrieg implements IBot {
     public IMove doMove(IGameState state) {
 
         return null;
+    }
+
+    private int miniMax(IGameState state){
+
+
+
+
+
+        return 1;
+    }
+
+    //isTerminal returns the checkWin method, checking if there is a win for either player.
+    private boolean isTerminal(IGameState state) {
+
+        String[][] macro = state.getField().getMacroboard();
+
+        return checkWin(macro, "0")
+                || checkWin(macro, "1")
+                || state.getField().isFull();
+    }
+
+
+    //Looks at the board and checks if there is a winning line in the macro boards, returns true if there is
+    private boolean checkWin(String[][] board, String player) {
+
+        for (int i = 0; i < 3; i++) {
+            if (board[i][0].equals(player) && board[i][1].equals(player) && board[i][2].equals(player))
+                return true;
+
+            if (board[0][i].equals(player) && board[1][i].equals(player) && board[2][i].equals(player))
+                return true;
+        }
+
+        if (board[0][0].equals(player) && board[1][1].equals(player) && board[2][2].equals(player))
+            return true;
+
+        if (board[0][2].equals(player) && board[1][1].equals(player) && board[2][0].equals(player))
+            return true;
+
+        return false;
     }
 
 
