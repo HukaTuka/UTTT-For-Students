@@ -52,7 +52,6 @@ public class PrioListOnSteroids extends LocalPrioritisedListBot {
 
         return false;
     }
-
     // Compile a list of all available winning moves
     private List<IMove> getWinningMoves(IGameState state){
         String player = "1";
